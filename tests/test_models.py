@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -193,3 +193,33 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+    def test_find_by_price(self):
+        """It should Find Products by Price (Decimal and string inputs)"""
+        products = ProductFactory.create_batch(5)
+        for product in products:
+            product.price = Decimal("19.99")
+            product.create()
+        # Add a unique price product
+        unique_product = ProductFactory(price=Decimal("9.99"))
+        unique_product.create()
+        # Test with Decimal input
+        found = Product.find_by_price(Decimal("19.99")).all()
+        self.assertEqual(len(found), 5)
+        for product in found:
+            self.assertEqual(product.price, Decimal("19.99"))
+
+        # Test with string input including extra quotes/spaces
+        found_str = Product.find_by_price(' "19.99" ').all()
+        self.assertEqual(len(found_str), 5)
+        for product in found_str:
+            self.assertEqual(product.price, Decimal("19.99"))
+
+    def test_deserialize_no_data(self):
+        """It should raise a DataValidationError when no data is provided"""
+        product = Product()
+        with self.assertRaises(DataValidationError) as context:
+            product.deserialize(None)
+        self.assertIn("body of request contained bad or no data", str(context.exception))
+
+        
