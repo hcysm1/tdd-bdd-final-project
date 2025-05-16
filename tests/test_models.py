@@ -222,4 +222,26 @@ class TestProductModel(unittest.TestCase):
             product.deserialize(None)
         self.assertIn("body of request contained bad or no data", str(context.exception))
 
-        
+    def test_deserialize_invalid_available_type(self):
+        """It should raise a DataValidationError for non-bool available"""
+        data = {
+            "name": "Glasses",
+            "description": "Stylish glasses",
+            "price": "15.00",
+            "available": "yes",  # Invalid
+            "category": "ACCESSORIES"
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError) as context:
+            product.deserialize(data)
+        self.assertIn("Invalid type for boolean [available]", str(context.exception))
+
+    def test_update_without_id(self):
+        """It should raise a DataValidationError when updating without an ID"""
+        product = ProductFactory()
+        product.id = None  # Simulate missing ID (not saved yet)
+
+        with self.assertRaises(DataValidationError) as context:
+            product.update()
+
+        self.assertIn("Update called with empty ID field", str(context.exception))
